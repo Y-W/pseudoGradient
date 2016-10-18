@@ -2302,10 +2302,10 @@ def complex_from_polar(abs, angle):
 
 
 """
-Add definition of pseudo-gradient unary scalar operators
+Import definition of pseudo-gradient unary scalar operators
 """
 import sys, os
-sys.path.append(os.path.abspath(os.path.dirname(__file__)+"/../.."))
+sys.path.append(os.path.abspath(os.path.dirname(__file__)+"/../..")) # theano_pg/
 from tensorElemwise_pg import * 
 
 
