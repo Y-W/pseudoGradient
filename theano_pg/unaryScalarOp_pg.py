@@ -15,7 +15,7 @@ class Sgn_pg(UnaryScalarOp):
         # if rval.type.dtype in discrete_types:
         #     rval = rval.astype(theano.config.floatX)
 
-        return [gz * (sgn(x) * sgn(gz) + 1.0) * 0.5]
+        return [gz * exp(-5.0 * x * x)]
 
     def c_code(self, node, name, inputs, outputs, sub):
         # casting is done by compiler
