@@ -10,12 +10,12 @@ class Sgn_pg(UnaryScalarOp):
     def grad(self, inputs, gout):
         (x,) = inputs
         (gz,) = gout
-        rval = x.zeros_like()
+        # rval = x.zeros_like()
 
-        if rval.type.dtype in discrete_types:
-            rval = rval.astype(theano.config.floatX)
+        # if rval.type.dtype in discrete_types:
+        #     rval = rval.astype(theano.config.floatX)
 
-        return [rval+x*0.5]
+        return [gz * (sgn(x) * sgn(gz) + 1.0) * 0.5]
 
     def c_code(self, node, name, inputs, outputs, sub):
         # casting is done by compiler
@@ -27,7 +27,7 @@ class Sgn_pg(UnaryScalarOp):
             return '%(z)s = (%(x)s > 0) ? 1. : ((%(x)s < 0) ? -1. : (isnan(%(x)s) ? NAN : 0.));' % locals()
         if type in int_types:
             return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0 : 1 : -1;" % locals()
-        raise ComplexError('complex has no sgn')
+        raise ComplexError('complex has no sgn - sgn_pg')
 
     def c_code_cache_version(self):
         s = super(Sgn_pg, self).c_code_cache_version()
@@ -36,4 +36,4 @@ class Sgn_pg(UnaryScalarOp):
         else:  # if parent is unversioned, we are too
             return s
 
-sgn_pg = Sgn_pg(same_out_nocomplex, name='sgn')
+sgn_pg = Sgn_pg(same_out_nocomplex, name='sgn_pg')
