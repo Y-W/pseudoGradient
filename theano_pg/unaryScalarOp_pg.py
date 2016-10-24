@@ -1,7 +1,7 @@
 from theano.scalar.basic import *
 
 class Sgn_pg(UnaryScalarOp):
-    nfunc_spec = ('sign', 1, 1)
+    nfunc_spec = ('sign_pg', 1, 1)
 
     def impl(self, x):
         # casting to output type is handled by filter
