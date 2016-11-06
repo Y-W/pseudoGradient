@@ -19,7 +19,6 @@ import pickle
 
 import numpy as np
 
-sys.path.insert(0, os.path.realpath('theano_pg'))
 import theano
 import theano.tensor as T
 

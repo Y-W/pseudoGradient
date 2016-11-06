@@ -19,7 +19,6 @@ import pickle
 
 import numpy as np
 
-sys.path.insert(0, os.path.realpath('theano_pg'))
 import theano
 import theano.tensor as T
 
@@ -27,6 +26,48 @@ import lasagne
 
 # for the larger networks (n>=9), we need to adjust pythons recursion limit
 sys.setrecursionlimit(10000)
+
+
+# Define PseudoGradient for Sign
+from theano.scalar.basic import UnaryScalarOp, same_out_nocomplex, sgn, maximum, exp, float_types, int_types, abs_
+from theano.tensor.elemwise import Elemwise
+
+class Sgn_PG(UnaryScalarOp):
+    nfunc_spec = ('sgn_pg', 1, 1)
+
+    def impl(self, x):
+        # casting to output type is handled by filter
+        return np.sign(x)
+
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
+        # rval = x.zeros_like()
+
+        # if rval.type.dtype in discrete_types:
+        #     rval = rval.astype(theano.config.floatX)
+
+        return [gz * (abs_(x) <= 1)]
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        # casting is done by compiler
+        # TODO: use copysign
+        (x,) = inputs
+        (z,) = outputs
+        type = node.inputs[0].type
+        if type in float_types:
+            return '%(z)s = (%(x)s > 0) ? 1. : ((%(x)s < 0) ? -1. : (isnan(%(x)s) ? NAN : 0.));' % locals()
+        if type in int_types:
+            return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0 : 1 : -1;" % locals()
+        raise TypeError()  # complex has no sgn
+
+# TODO: A more elegant way to inject operators into packages?
+theano.scalar.sgn_pg = Sgn_PG(same_out_nocomplex, name='sgn_pg')
+np.sgn_pg = np.sign
+
+sgn_pg = Elemwise(theano.scalar.sgn_pg)
+
+
 
 # ##################### Load data from CIFAR-10 dataset #######################
 # this code assumes the cifar dataset from 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
@@ -91,7 +132,7 @@ from lasagne.layers import GlobalPoolLayer
 from lasagne.layers import PadLayer
 from lasagne.layers import ExpressionLayer
 from lasagne.layers import NonlinearityLayer
-from lasagne.nonlinearities import softmax# , tanh # rectify
+from lasagne.nonlinearities import softmax # , tanh # rectify
 from lasagne.layers import batch_norm
 
 def build_cnn(input_var=None, n=5):
@@ -106,7 +147,7 @@ def build_cnn(input_var=None, n=5):
             first_stride = (1,1)
             out_num_filters = input_num_filters
 
-        stack_1 = batch_norm(ConvLayer(l, num_filters=out_num_filters, filter_size=(3,3), stride=first_stride, nonlinearity=T.sgn_pg, pad='same', W=lasagne.init.HeNormal(gain='relu'), flip_filters=False))
+        stack_1 = batch_norm(ConvLayer(l, num_filters=out_num_filters, filter_size=(3,3), stride=first_stride, nonlinearity=sgn_pg, pad='same', W=lasagne.init.HeNormal(gain='relu'), flip_filters=False))
         stack_2 = ConvLayer(stack_1, num_filters=out_num_filters, filter_size=(3,3), stride=(1,1), nonlinearity=None, pad='same', W=lasagne.init.HeNormal(gain='relu'), flip_filters=False)
         
         # add shortcut connections
@@ -124,7 +165,7 @@ def build_cnn(input_var=None, n=5):
     l_in = InputLayer(shape=(None, 3, 32, 32), input_var=input_var)
 
     # first layer, output is 16 x 32 x 32
-    l = batch_norm(ConvLayer(l_in, num_filters=16, filter_size=(3,3), stride=(1,1), nonlinearity=T.sgn_pg, pad='same', W=lasagne.init.HeNormal(gain='relu'), flip_filters=False))
+    l = batch_norm(ConvLayer(l_in, num_filters=16, filter_size=(3,3), stride=(1,1), nonlinearity=sgn_pg, pad='same', W=lasagne.init.HeNormal(gain='relu'), flip_filters=False))
     
     # first stack of residual blocks, output is 16 x 32 x 32
     for _ in range(n):
